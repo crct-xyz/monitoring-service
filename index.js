@@ -15,12 +15,10 @@ const dbUrl = "http://ec2-52-59-228-70.eu-central-1.compute.amazonaws.com:8000/a
 const multisigPda = new PublicKey('Gr5FaqkMmypxUJfADQsoYN3moknprc5LzMF2qh3SiP8m');
 
 
-async function sendToSQS(sigInfo) {
+async function sendToSQS(transactionType) {
     const params = {
         MessageBody: JSON.stringify({
-            signature: sigInfo.signature,
-            slot: sigInfo.slot,
-            confirmationStatus: sigInfo.confirmationStatus
+            TransactionType: transactionType
         }),
         QueueUrl: queueUrl,
     };
@@ -28,6 +26,7 @@ async function sendToSQS(sigInfo) {
     try {
         const result = await sqs.sendMessage(params).promise();
         console.log('Message sent to SQS:', result.MessageId);
+        console.log("params: ", params);
     } catch (error) {
         console.error('Error sending message to SQS:', error);
     }
@@ -96,11 +95,12 @@ exports.handler = async (event) => {
 
     const response = await axios.get(dbUrl);
     const data = response.data;
-    data.forEach((item) => {
+    for (item of data) {
         if (item.contract_name === transactionType) {
+            await sendToSQS(transactionType)
             console.log("transaction type: ", transactionType, item.type_id)
         }
-    });
+    };
 
     return {
         statusCode: 200,
