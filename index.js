@@ -10,15 +10,22 @@ const connection = new Connection(clusterApiUrl('mainnet-beta'));
 const sqs = new AWS.SQS({region: 'eu-central-1'})
 const queueUrl = 'https://sqs.eu-central-1.amazonaws.com/816069166828/transactionSignatures'
 const dbUrl = "http://ec2-52-59-228-70.eu-central-1.compute.amazonaws.com:8000/action_types/";
+const orderDb = 'http://ec2-52-59-228-70.eu-central-1.compute.amazonaws.com:8000/orders/'
+
 
 // The Squads multisig PublicKey
-const multisigPda = new PublicKey('Gr5FaqkMmypxUJfADQsoYN3moknprc5LzMF2qh3SiP8m');
+// const multisigPda = new PublicKey('Gr5FaqkMmypxUJfADQsoYN3moknprc5LzMF2qh3SiP8m');
 
 
-async function sendToSQS(transactionType) {
+async function sendToSQS(orderID, actionEvent, userId, transactionType, vaultId, recipients) {
     const params = {
         MessageBody: JSON.stringify({
-            TransactionType: transactionType
+            Order_ID: orderID,
+            Action_Event: actionEvent,
+            User_ID: userId,
+            Transaction_Type: transactionType,
+            Vault_ID: vaultId,
+            Recipients: recipients
         }),
         QueueUrl: queueUrl,
     };
@@ -47,7 +54,8 @@ const proposalRejectHex = getHash("global", "proposal_reject").toString("hex");
 const vaultTransactionHex = getHash("global", "vault_transaction_create").toString("hex");
 const configTransactionHex = getHash("global", "config_transaction_create").toString("hex");
 
-async function getSignatures() {
+async function getSignatures(multisigPda) {
+  console.log("multisigPDA: ", multisigPda);
     let transferType = '';
 
     try {
@@ -67,18 +75,22 @@ async function getSignatures() {
         }
         if (instructionDataHex === vaultTransactionHex) {
           transferType = "send"
+          console.log("transfer Type: ", transferType)
           return transferType
         }
         else if (instructionDataHex === proposalApproveHex) {
           transferType = "approve_tx"
+          console.log("transfer Type: ", transferType)
           return transferType
         }
         else if (instructionDataHex === proposalRejectHex) {
           transferType = "reject_tx"
+          console.log("transfer Type: ", transferType)
           return transferType
         }
         else if (instructionDataHex === configTransactionHex) {
           transferType = "config"
+          console.log("transfer Type: ", transferType)
           return transferType;
         }
       }
@@ -91,16 +103,35 @@ exports.handler = async (event) => {
     console.log(event);
     console.log("Monitoring transactions...");
 
-    const transactionType = await getSignatures();
+    // const transactionType = await getSignatures();
 
-    const response = await axios.get(dbUrl);
+    let multisigPda;
+    let orderID;
+    let actionEvent;
+    let userId;
+    let transactionType;
+    let vaultId;
+    let recipients;
+    const response = await axios.get(orderDb);
     const data = response.data;
-    for (item of data) {
-        if (item.contract_name === transactionType) {
-            await sendToSQS(transactionType)
-            console.log("transaction type: ", transactionType, item.type_id)
-        }
-    };
+    for (const item of data) {
+      vaultId = item.action_event.details.vault_id
+      orderID = item.order_id
+      actionEvent = item.action_event
+      userId = item.user_id
+      transactionType = await getSignatures(new PublicKey(vaultId))
+      recipients = item.action_event.details.recipients
+      await sendToSQS(orderID, actionEvent, userId, transactionType, vaultId, recipients);
+    }
+
+    // const response = await axios.get(dbUrl);
+    // const data = response.data;
+    // for (item of data) {
+    //     if (item.contract_name === transactionType) {
+    //         await sendToSQS(transactionType)
+    //         console.log("transaction type: ", transactionType, item.type_id)
+    //     }
+    // };
 
     return {
         statusCode: 200,
