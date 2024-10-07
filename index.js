@@ -78,16 +78,19 @@ async function getSignatures(multisigPda) {
           console.log("transfer Type: ", transferType)
           return transferType
         }
+        // biome-ignore lint/style/noUselessElse: <explanation>
         else if (instructionDataHex === proposalApproveHex) {
           transferType = "approve_tx"
           console.log("transfer Type: ", transferType)
           return transferType
         }
+        // biome-ignore lint/style/noUselessElse: <explanation>
         else if (instructionDataHex === proposalRejectHex) {
           transferType = "reject_tx"
           console.log("transfer Type: ", transferType)
           return transferType
         }
+        // biome-ignore lint/style/noUselessElse: <explanation>
         else if (instructionDataHex === configTransactionHex) {
           transferType = "config"
           console.log("transfer Type: ", transferType)
@@ -99,11 +102,52 @@ async function getSignatures(multisigPda) {
     }
 }
 
+function parseLambdaEvent(event) {
+  // Parse the outer event object
+  // const parsedEvent = JSON.parse(event);
+  console.log(event);
+
+  // Parse the inner body, which is a stringified JSO
+
+  // Extract the first (and only) transaction from the body
+  const transaction = event[0];
+
+  // Extract required information
+  const result = {
+    innerInstructions: transaction.meta.innerInstructions,
+    signatures: transaction.transaction.signatures,
+    instructions: transaction.transaction.message.instructions,
+    accountKeys: transaction.transaction.message.accountKeys,
+  };
+
+  // Log the extracted information
+  // console.log("Inner Instructions:");
+  // console.log(JSON.stringify(result.innerInstructions, null, 2));
+
+  // console.log("\nSignatures:");
+  // result.signatures.forEach((signature, index) => {
+  //   console.log(`${index}: ${signature}`);
+  // });
+
+  // console.log("\nInstructions:");
+  // console.log(JSON.stringify(result.instructions, null, 2));
+
+  // console.log("\nAccount Keys:");
+  // result.accountKeys.forEach((key, index) => {
+  //   console.log(`${index}: ${key}`);
+  // });
+
+  return result;
+}
+
 exports.handler = async (event) => {
     console.log(event);
     console.log("Monitoring transactions...");
 
+    // const parsedEventBefore = JSON.parse(event.body);
+    // console.log("parsed event: ", parsedEventBefore)
     // const transactionType = await getSignatures();
+    // console.log("helius lambda: ", parseLambdaEvent(parsedEventBefore));
 
     let multisigPda;
     let orderID;
@@ -115,14 +159,27 @@ exports.handler = async (event) => {
     const response = await axios.get(orderDb);
     const data = response.data;
     for (const item of data) {
-      vaultId = item.action_event.details.vault_id
-      orderID = item.order_id
+      if (item.action_event.details.vault_id && item.action_event.details.recipients) {
+        vaultId = item.action_event.details.vault_id
+        recipients = item.action_event.details.recipients
+        orderID = item.order_id
       actionEvent = item.action_event
       userId = item.user_id
-      transactionType = await getSignatures(new PublicKey(vaultId))
-      recipients = item.action_event.details.recipients
-      await sendToSQS(orderID, actionEvent, userId, transactionType, vaultId, recipients);
+        transactionType = await getSignatures(new PublicKey(vaultId))
+        await sendToSQS(orderID, actionEvent, userId, transactionType, vaultId, recipients);
+      }
+      else {
+        continue
+      }
+      // orderID = item.order_id
+      // actionEvent = item.action_event
+      // userId = item.user_id
+      // console.log("userid: ", userId)
+      // console.log("recipirents: ", recipients)
     }
+
+    // const {innerInstructions, signatures, instructions, accountKeys} = parseLambdaEvent(parsedEventBefore)
+    // console.log("accountkeys: ", accountKeys)
 
     // const response = await axios.get(dbUrl);
     // const data = response.data;

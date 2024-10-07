@@ -35,7 +35,7 @@ const proposalApproveHex = getHash("global", "proposal_approve").toString("hex")
 const proposalRejectHex = getHash("global", "proposal_reject").toString("hex");
 const vaultTransactionHex = getHash("global", "vault_transaction_create").toString("hex");
 const configTransactionHex = getHash("global", "config_transaction_create").toString("hex");
-console.log("Global hash: ", proposalRejectHex);
+console.log("Global hash: ", proposalApproveHex);
 
 const connection = new Connection(clusterApiUrl("mainnet-beta"));
 const multisigPda = new PublicKey(
@@ -54,7 +54,8 @@ async function getSignatures() {
         maxSupportedTransactionVersion: 0,
       });
       console.log("transaction: ", tx)
-      const instructionIndex = tx.meta.innerInstructions[0].index;
+      const lengthOfAccsKeys = tx.transaction.message.getAccountKeys().staticAccountKeys.length
+      const instructionIndex = tx.transaction.message.getAccountKeys().staticAccountKeys[lengthOfAccsKeys - 2].toString()
       console.log("instruction index: ", instructionIndex)
       let instructionDataHex = tx.transaction.message.compiledInstructions[instructionIndex].data.slice(0, 8).toString("hex")
       if (instructionDataHex === proposalCreateHex) {
@@ -86,9 +87,9 @@ async function main() {
     const transfer_type = await getSignatures();
     console.log(transfer_type);
 
-    const response = await axios.get(dbUrl);
-    const data = response.data;
-    console.log("json data: ", data)
+    // const response = await axios.get(dbUrl);
+    // const data = response.data;
+    // console.log("json data: ", data)
     data.forEach((item) => {
         if (item.contract_name === transfer_type) {
             console.log("transaction type: ", transfer_type, item.type_id)
