@@ -55,7 +55,7 @@ async function getSignatures() {
       });
       console.log("transaction: ", tx)
       const lengthOfAccsKeys = tx.transaction.message.getAccountKeys().staticAccountKeys.length
-      const instructionIndex = tx.transaction.message.getAccountKeys().staticAccountKeys[lengthOfAccsKeys - 2].toString()
+      const instructionIndex = tx.meta.innerInstructions[0].index
       console.log("instruction index: ", instructionIndex)
       let instructionDataHex = tx.transaction.message.compiledInstructions[instructionIndex].data.slice(0, 8).toString("hex")
       if (instructionDataHex === proposalCreateHex) {
@@ -90,10 +90,10 @@ async function main() {
     // const response = await axios.get(dbUrl);
     // const data = response.data;
     // console.log("json data: ", data)
-    data.forEach((item) => {
-        if (item.contract_name === transfer_type) {
-            console.log("transaction type: ", transfer_type, item.type_id)
-        }
-    });
+    // data.forEach((item) => {
+    //     if (item.contract_name === transfer_type) {
+    //         console.log("transaction type: ", transfer_type, item.type_id)
+    //     }
+    // });
 }
 main()
