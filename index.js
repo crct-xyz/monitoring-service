@@ -10,11 +10,8 @@ const connection = new Connection(clusterApiUrl("mainnet-beta"));
 const sqs = new AWS.SQS({ region: "eu-central-1" });
 const queueUrl =
   "https://sqs.eu-central-1.amazonaws.com/816069166828/transactionSignatures";
-const dbUrl =
-  "http://ec2-52-59-228-70.eu-central-1.compute.amazonaws.com:8000/action_types/";
-const orderDb =
-  "http://ec2-52-59-228-70.eu-central-1.compute.amazonaws.com:8000/orders/";
-
+const dbUrl = "https://squint-api.vercel.app/action_types/";
+const orderDb = "https://squint-api.vercel.app/orders/";
 // The Squads multisig PublicKey
 // const multisigPda = new PublicKey('Gr5FaqkMmypxUJfADQsoYN3moknprc5LzMF2qh3SiP8m');
 
@@ -189,7 +186,7 @@ exports.handler = async (event) => {
     ) {
       vaultId = item.action_event.details.vault_id;
       recipients = item.action_event.details.recipients;
-      orderID = item.order_id; 
+      orderID = item.order_id;
       actionEvent = item.action_event;
       userId = item.user_id;
       transactionType = await getSignatures(new PublicKey(vaultId));
@@ -204,11 +201,6 @@ exports.handler = async (event) => {
     } else {
       continue;
     }
-    // orderID = item.order_id
-    // actionEvent = item.action_event
-    // userId = item.user_id
-    // console.log("userid: ", userId)
-    // console.log("recipirents: ", recipients)
   }
 
   // const {innerInstructions, signatures, instructions, accountKeys} = parseLambdaEvent(parsedEventBefore)
